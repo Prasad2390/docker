@@ -1,0 +1,30 @@
+---
+version: "3"
+services:
+  movie_tickets:
+    container_name: prasacont
+    build: ./prasad
+    ports:
+      - "1234:80"
+    volumes:
+       - movie_volume:/usr/share/nginx/html:ro
+    networks:
+        - movie_network
+  bus_tickets:
+    container_name: zomacont
+    build: ./zoma
+    ports:
+       - "2222:80"
+    volumes:
+       - bus_volume:/usr/share/nginx/html:ro
+    networks:
+        - bus_network
+
+volumes:
+  movie_volume:
+  bus_volume:
+networks:
+ movie_network:
+    driver: bridge
+  bus_network:
+    driver: bridge
