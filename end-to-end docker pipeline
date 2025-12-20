@@ -1,0 +1,92 @@
+pipeline {
+    agent {
+        node{
+            label 'dev'
+        }
+    }
+    tools{
+        maven 'mymaven'
+        nodejs 'node16'
+    }
+    environment{
+        SCANNER_HOME=tool'mysonar'
+    }
+
+    stages {
+        stage('clean ws') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage("code"){
+            steps{
+                git 'https://github.com/Prasad2390/dockerwebapp.git'
+            }
+        }
+        stage('CQA'){
+            steps{
+                withSonarQubeEnv('mysonar') {
+                sh "mvn clean verify sonar:sonar -Dsonar.projectKey=myproject"
+                }
+            }
+        }
+        stage('quality gates'){
+            steps{
+                script{
+                waitForQualityGate abortPipeline: false, credentialsId: 'sonar'
+                }
+            }
+        }
+        stage('mvn build'){
+            steps{
+                sh 'mvn clean package'
+                sh 'cp -r target Docker-app'
+            }
+        }
+        stage('artifact'){
+            steps{
+                nexusArtifactUploader artifacts: [[artifactId: 'vprofile', classifier: '', file: 'target/vprofile-v2.war', type: 'war']], credentialsId: 'nexus', groupId: 'com.visualpathit', nexusUrl: '98.84.106.29:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'newnexus', version: 'v2'
+            }
+        }
+        stage('docker build'){
+            steps{
+                sh 'docker build -t prasa239/appimage:v1 Docker-app'
+                sh 'docker build -t prasa239/dbimage:v1 Docker-db'
+            }
+        }
+        stage('scanning image'){
+            steps{
+                sh 'trivy image prasa239/appimage:v1'
+                sh 'trivy image prasa239/dbimage:v1'
+            }
+        }
+        stage('pushing to hub'){
+            steps{
+                withDockerRegistry(credentialsId: 'docker') {
+                 sh 'docker push prasa239/appimage:v1'
+                 sh 'docker push prasa239/dbimage:v1'
+                }
+            }
+        }
+        stage("stack"){
+            steps{
+                sh 'docker stack deploy newstack --compose-file=compose.yml'
+            }
+        }
+    }
+    post {
+            always {
+            echo 'Slack Notifications'
+                slackSend (channel: 'jenkins', message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} \n build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}")
+                    }
+            }
+}
+
+EC2 for jenkins---large(28 rom)---jenkins,nexus,sonarqube cont,
+EC2 for master---meduim(20 rom)---docker,compose,swarm,git,java,stack
+EC2 for slave -----small(10 rom)---docker
+
+plugins--maven,sonarqube scanner,sonar quality gates,nexus artifacts,slack notification,docker pipeline,pipeline stage view
+
+tools---maven,sonarqualitygates,nodejs(16.0.2)
+system---sonarqube installations,quality gates,slack notification
