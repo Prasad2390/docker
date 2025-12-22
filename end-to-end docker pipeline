@@ -90,3 +90,23 @@ plugins--maven,sonarqube scanner,sonar quality gates,nexus artifacts,slack notif
 
 tools---maven,sonarqualitygates,nodejs(16.0.2)
 system---sonarqube installations,quality gates,slack notification
+
+
+
+---
+version: "3"
+services:
+ devopsdb:
+   container_name: devopsdb
+   image: prasa239/dbimage:v1
+   ports:
+     - "3306:3306"
+
+ application:
+   image: prasa239/appimage:v1
+   container_name: containerapp
+   ports:
+     - "1234:8080"
+   depends_on:
+     - "devopsdb"
+
