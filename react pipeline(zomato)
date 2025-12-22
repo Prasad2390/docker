@@ -1,0 +1,74 @@
+pipeline {
+    agent {
+        node {
+            label 'dev'
+        }
+    }
+    tools {
+        nodejs 'node-18'
+    }
+    environment{
+        SCANNER_HOME=tool 'mysonar'
+    }
+
+    stages {
+        stage("ws"){
+            steps {
+                cleanWs()
+              }
+            }
+        stage('code') {
+            steps {
+                git "https://github.com/Prasad2390/Zomato-Project.git"
+            }
+        }
+        stage("CQA"){
+            steps{
+                withSonarQubeEnv('mysonar') {
+                sh "${scanner_Home}/bin/sonar-scanner"
+                }
+            }
+        }
+        stage("quality gates"){
+            steps{
+               script {  
+                   waitForQualityGate abortPipeline: false, credentialsId: 'sonar'
+               }
+            }
+        }
+        stage('build'){
+            steps{
+                  sh 'npm install'
+                  sh 'npm run build'
+            }
+        }
+        stage('docker images'){
+            steps{
+                sh 'docker build -t prasa239/reactimage:v1 .'
+            }
+        }
+        stage('trivy'){
+            steps{
+                sh 'trivy image prasa239/reactimage:v1'
+            }
+        }
+        stage("pushing to hub"){
+            steps{
+                withDockerRegistry(credentialsId: 'docker') {
+                sh 'docker push prasa239/reactimage:v1'
+                    }   
+            }
+        }
+        stage("stack"){
+            steps{
+                sh 'docker stack deploy mystack --compose-file=compose.yml'
+            }
+        }
+    }
+    post {
+            always {
+            echo 'Slack Notifications'
+            slackSend (channel: 'jenkins', message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} \n build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}")
+                }
+     }
+}
