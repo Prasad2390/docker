@@ -72,3 +72,15 @@ pipeline {
                 }
      }
 }
+
+
+
+EC2 for jenkins---large(28 rom)---jenkins,nexus,sonarqube cont,
+EC2 for master---meduim(20 rom)---docker,compose,swarm,git,java,stack
+EC2 for slave -----small(10 rom)---docker
+
+plugins--maven,sonarqube scanner,sonar quality gates,slack notification,docker pipeline,pipeline stage view,npm for build
+
+tools---sonarqualitygates,nodejs(18)
+system---sonarqube installations,quality gates,slack notification
+
